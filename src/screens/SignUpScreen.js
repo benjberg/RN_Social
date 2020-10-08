@@ -1,14 +1,69 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
+import { Platform } from "react-native";
 import styled from "styled-components";
 import Text from "../components/Text";
 import { AntDesign } from "@expo/vector-icons";
-
+import * as Permissions from "expo-permissions";
+import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import {FirebaseContext} from '../Context/FirebaseContext'
+import {UserContext} from '../Context/UserContext'
 export default SignUpScreen = ({ navigation }) => {
   const [username, setUsername] = useState();
   const [email, setEmail] = useState();
   const [password, setPassword] = useState();
   const [loading, setLoading] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState();
+  const firebase = useContext(FirebaseContext)
+  const [_, setUser] = useContext(UserContext)
+  const getPermission = async () => {
+    if (Platform.OS !== "web") {
+      const { status } = await Permissions.askAsync(Permissions.CAMERA_ROLL);
+      return status;
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEdditing: true,
+        aspect: [1, 1],
+        wuality: 0.5,
+      });
+      if (!result.cancelled) {
+        setProfilePhoto(result.uri);
+      }
+    } catch (error) {
+      console.log("Error @pickImage: " + error);
+    }
+  };
+
+  const addProfilePhoto = async () => {
+    const status = await getPermission();
+
+    if (status !== "granted") {
+      alert("we need permission to access your photos");
+      return;
+    }
+    pickImage();
+  };
+
+  const signUp = async ()=> {
+    setLoading(true)
+    const user = {username, email, password, profilePhoto}
+
+    try {
+      const createdUser = await firebase.createUser(user)
+      setUser({...createdUser, isLoggedIn: true})
+      
+    } catch (error) {
+      console.log("error with sign up: " + error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <KeyboardAwareScrollView style={{ flex: 1 }}>
       <Container>
@@ -18,10 +73,14 @@ export default SignUpScreen = ({ navigation }) => {
           </Text>
         </Main>
 
-        <ProfilePhotoContainer>
-          <DefaultProfilePhoto>
-            <AntDesign name="plus" size={24} color="#ffffff" />
-          </DefaultProfilePhoto>
+        <ProfilePhotoContainer onPress={addProfilePhoto}>
+          {profilePhoto ? (
+            <ProfilePhoto source={{ uri: profilePhoto }} />
+          ) : (
+            <DefaultProfilePhoto>
+              <AntDesign name="plus" size={24} color="#ffffff" />
+            </DefaultProfilePhoto>
+          )}
         </ProfilePhotoContainer>
 
         <Auth>
@@ -61,7 +120,7 @@ export default SignUpScreen = ({ navigation }) => {
           </AuthContainer>
         </Auth>
 
-        <SignUpContainer disabled={loading}>
+        <SignUpContainer onPress={signUp} disabled={loading}>
           {loading ? (
             <Loading />
           ) : (
@@ -108,6 +167,10 @@ const DefaultProfilePhoto = styled.View`
   align-items: center
   justify-content: center
   flex: 1
+`;
+
+const ProfilePhoto = styled.Image`
+  flex: 1;
 `;
 const Auth = styled.View`
   margin: 16px 32px 32px;
