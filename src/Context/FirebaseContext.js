@@ -78,6 +78,19 @@ const Firebase = {
       console.log("error at get user: " + error);
     }
   },
+
+  logOut: async () => {
+    try {
+      await firebase.auth().signOut();
+    } catch (error) {
+      console.log("error at logout: " + error);
+    }
+
+    return true;
+  },
+  signIn: async (email, password) => {
+    return firebase.auth().signInWithEmailAndPassword(email, password);
+  },
 };
 
 const FirebaseProvider = (props) => {

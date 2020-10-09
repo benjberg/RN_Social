@@ -1,12 +1,36 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import styled from "styled-components";
 import Text from "../components/Text";
-
+import { FirebaseContext } from "../Context/FirebaseContext";
+import { UserContext } from "../Context/UserContext";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 export default SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState();
   const [password, setPassword] = useState();
   const [loading, setLoading] = useState(false);
+  const firebase = useContext(FirebaseContext);
+  const [_, setUser] = useContext(UserContext);
+  const signIn = async () => {
+    setLoading(true);
+
+    try {
+      await firebase.signIn(email, password);
+      const uid = firebase.getCurrentUser().uid;
+      const userInfo = await firebase.getUserInfo(uid);
+
+      setUser({
+        username: userInfo.username,
+        email: userInfo.email,
+        uid,
+        profilePhotoUrl: userInfo.profilePhotoUrl,
+        isLoggedIn: true,
+      });
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <KeyboardAwareScrollView style={{ flex: 1 }}>
       <Container>
@@ -43,7 +67,7 @@ export default SignInScreen = ({ navigation }) => {
           </AuthContainer>
         </Auth>
 
-        <SignInContainer disabled={loading}>
+        <SignInContainer onPress={signIn} disabled={loading}>
           {loading ? (
             <Loading />
           ) : (
